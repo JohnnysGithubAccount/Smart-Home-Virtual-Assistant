@@ -1,2 +1,8 @@
 # Smart Home Virtual Assistant
  A function calling llm for smarthome by function calling
+
+
+Running llama model server
+```bash
+python -m llama_cpp.server --model .\models\functionary-7b-v2.q8_0.gguf --chat_format functionary-v2 --hf_pretrained_model_name_or_path ./models
+
