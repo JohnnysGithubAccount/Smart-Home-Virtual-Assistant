@@ -12,3 +12,5 @@ Model path: <a url="https://huggingface.co/meetkai/functionary-7b-v2-GGUF/tree/m
 
 You will need to download all the followings and save them in models:
 ![img.png](img.png)
+
+For the model, you can change between q4 (4bits), q8 or q16 for examining different performances.
