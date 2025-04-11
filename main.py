@@ -2,8 +2,7 @@ import openai
 import json
 import instructor
 
-from utils.firebase_update import update_device, fetch_data
-from datetime import date
+from utils.smarthome_tasks.firebase_update import update_device, fetch_data
 
 # Define client OpenAI
 client = openai.OpenAI(
@@ -18,7 +17,7 @@ def chat_with_llm_fc(message_input):
     messages = [
         {
             "role":"system",
-            "content": "Base on the information return by function calling to answer question."
+            "content": "You're a smart home virtual assistant, you can help user to control device using functions and also answer their normal question. If the query related to controlling device, getting temperature or humidity, only select the function."
         },
         {
             "role":"user",
@@ -45,7 +44,7 @@ def chat_with_llm_fc(message_input):
                         },
                         "status": {
                             "type": "integer",
-                            "description": "Either 0 or 1, 0 is off, 1 is on.",
+                            "description": "The desired status of the device, off means 0 and on means 1.",
                         },
                     },
                     "required": ["room", "device", "status"],
@@ -56,13 +55,13 @@ def chat_with_llm_fc(message_input):
             "type": "function",
             "function": {
                 "name": "fetch_data",
-                "description": "Get the current temperature and humidity of the smart home from the database",
+                "description": "Get the current temperature or humidity or both (depended on the will of user).",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "status": {
                             "type": "string",
-                            "description": "Value either being temperature or humidity or both",
+                            "description": "Value either being 'temperature' or 'humidity' or 'both' depends on the question",
                         },
                     },
                     "required": ["status"],
@@ -72,9 +71,8 @@ def chat_with_llm_fc(message_input):
     ]
 
 
-    # Call model 1st time
     response = client.chat.completions.create(
-        model = "functionary", # anything
+        model = "functionary",
         messages = messages,
         tools = tools,
         tool_choice="auto"
@@ -89,11 +87,13 @@ def chat_with_llm_fc(message_input):
         "fetch_data": fetch_data
     }
 
-    # Kiem tra va goi API tuong ung
     for tool_call in tool_calls:
         function_name = tool_call.function.name
+        print("-" * 10)
+        print(function_name)
         function_to_call = function_list[function_name]
         function_args = json.loads(tool_call.function.arguments)
+        print("-" * 10)
         print(function_args)
 
         # Call function

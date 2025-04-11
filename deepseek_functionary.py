@@ -3,10 +3,10 @@ import json
 import instructor
 
 
-from utils.firebase_update import update_device, fetch_data
+from utils.smarthome_tasks.firebase_update import update_device, fetch_data
 
 client = openai.OpenAI(
-    api_key="sk-36394102ad804cf4801a4938cc925529",
+    api_key="<YOUR DEEPSEEK API KEY>",
     base_url="https://api.deepseek.com",
 )
 
