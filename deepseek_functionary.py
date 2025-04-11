@@ -2,27 +2,25 @@ import openai
 import json
 import instructor
 
-from utils.firebase_update import update_device, fetch_data
-from datetime import date
 
-# Define client OpenAI
+from utils.firebase_update import update_device, fetch_data
+
 client = openai.OpenAI(
-    api_key="this is a key",
-    base_url= "http://localhost:8000/v1"
+    api_key="sk-36394102ad804cf4801a4938cc925529",
+    base_url="https://api.deepseek.com",
 )
 
 client = instructor.patch(client)
 
-
 def chat_with_llm_fc(message_input):
     messages = [
         {
-            "role":"system",
-            "content": "Base on the information return by function calling to answer question."
+            'role': 'system',
+            'content': "Base on the information return by function calling to answer question. Do not use other source."
         },
         {
-            "role":"user",
-            "content": message_input
+            'role': 'user',
+            'content': message_input
         }
     ]
 
@@ -71,67 +69,55 @@ def chat_with_llm_fc(message_input):
         }
     ]
 
-
-    # Call model 1st time
-    response = client.chat.completions.create(
-        model = "functionary", # anything
-        messages = messages,
-        tools = tools,
+    response_llm = client.chat.completions.create(
+        model="deepseek-chat",
+        messages=messages,
+        tools=tools,
         tool_choice="auto"
     )
 
-    # Get response message
-    response_message = response.choices[0].message
-    tool_calls = response_message.tool_calls
+    response_msg = response_llm.choices[0].message
+    print(response_msg)
+    tool_calls = response_msg.tool_calls
 
     function_list = {
         "update_device": update_device,
         "fetch_data": fetch_data
     }
 
-    # Kiem tra va goi API tuong ung
     for tool_call in tool_calls:
         function_name = tool_call.function.name
-        function_to_call = function_list[function_name]
+        function_to_call= function_list[function_name]
         function_args = json.loads(tool_call.function.arguments)
-        print(function_args)
 
-        # Call function
-        if function_name == "update_device":
-            function_response = function_to_call(
-                room = function_args.get("room"),
-                device = function_args.get("device"),
-                status = function_args.get("status")
-            )
-        else:
-            function_response = function_to_call(
-                status = function_args.get("status")
-            )
-
-        messages.append(
-            {
-                "tool_call_id": tool_call.id,
-                "role": "function",
-                "name": "functions." + function_name,
-                "content": function_response,
-            }
+        function_response = function_to_call(
+            status=function_args.get("status")
         )
 
-    # Call LLM 2nd time with function response
+        messages.append({
+            "role": "function",
+            "tool_call_id": tool_call.id,
+            "name": "functions."+function_name,
+            "content": function_response
+        })
+
     second_response = client.chat.completions.create(
-        model = "functionary",
-        messages = messages,
-        temperature=0.1,
+        model='deepseek-chat',
+        messages=messages
     )
 
-    return second_response.choices[0].message.content
+    print(second_response.choices[0].message)
+    return second_response.choices[0].message99
 
 
 def main():
-    message_input = "Tell me what is the current temperature"
-    bot_message = chat_with_llm_fc(message_input)
-    print("#" * 10, " Bot :", bot_message )
+    message_input = "Can you help me get the temperature of the house right now"
+    bot_msg = chat_with_llm_fc(message_input=message_input)
+    print("*" * 10)
+    print(bot_msg)
 
 
 if __name__ == "__main__":
     main()
+
+
