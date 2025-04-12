@@ -1,17 +1,21 @@
 import ollama
 import asyncio
-from utils.general_purpose.functions import get_antonyms, get_flight_times
+from transformers.pipelines.audio_utils import ffmpeg_microphone_live
 from utils.smarthome_tasks.firebase_update import update_device, fetch_data
 from utils.smarthome_tasks.tools_desc import tools
+from transformers import pipeline
+import torch
+from utils.speech_to_text.utils import transcribe
 
 
 async def run(model: str, user_input: str):
     client = ollama.AsyncClient()
+
     # Initialize conversation with a user query
     messages = [
         {
             'role': 'system',
-            'content': "You're a virtual assistant for smart home, if the question is related to controlling device or get temperature or humidity, only answer from information got from the functions."
+            'content': "You're a virtual assistant for smart home, if the question is related to controlling device or get temperature or humidity, only answer from information got from the functions, else, do just answer and do not recommend functions."
         },
         {
             "role": "user",
@@ -25,6 +29,7 @@ async def run(model: str, user_input: str):
         messages=messages,
         tools=tools
     )
+    print(response)
 
     # Add the model's response to the conversation history
     messages.append(response["message"])
@@ -79,12 +84,76 @@ async def run(model: str, user_input: str):
     print(second_response["message"]["content"])
 
 
-while True:
-    msg_input = input("You: ")
-    if not msg_input:
-        msg_input = "What is the flight time from NYC to LAX?"
-    if msg_input.lower() == "exit":
-        break
+def wake_word_detector(
+    classifier,
+    wake_word="marvin",
+    prob_threshold=0.5,
+    chunk_length_s=2.0,
+    stream_chunk_s=0.25,
+    debug=False,
+):
+    if wake_word not in classifier.model.config.label2id.keys():
+        raise ValueError(
+            f"Wake word {wake_word} not in set of valid class labels, pick a wake word in the set {classifier.model.config.label2id.keys()}."
+        )
+
+    sampling_rate = classifier.feature_extractor.sampling_rate
+
+    mic = ffmpeg_microphone_live(
+        sampling_rate=sampling_rate,
+        chunk_length_s=chunk_length_s,
+        stream_chunk_s=stream_chunk_s,
+    )
+
+    print("Listening for wake word...")
+    for prediction in classifier(mic):
+        prediction = prediction[0]
+        if debug:
+            print(prediction)
+        if prediction["label"] == wake_word and prediction["score"] > prob_threshold:
+            break
+
+
+
+def chat(transcriber):
+    msg_input = transcribe(
+        transcriber
+    )
+    print(f"You: {msg_input}")
+
     print("Processing")
     asyncio.run(run("llama3.2:1b", msg_input))
     print("-" * 10)
+
+
+def speak(text):
+    pass
+
+
+def main():
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    classifier = pipeline(
+        "audio-classification",
+        model="MIT/ast-finetuned-speech-commands-v2",
+        device=device
+    )
+
+    transcriber = pipeline(
+        "automatic-speech-recognition",
+        model="openai/whisper-base.en",
+        device=device
+    )
+
+    while True:
+        wake_word_detector(
+            classifier,
+            debug=False
+        )
+
+        chat(transcriber)
+
+
+
+if __name__ == "__main__":
+    main()
