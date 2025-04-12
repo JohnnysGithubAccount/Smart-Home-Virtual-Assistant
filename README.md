@@ -18,7 +18,7 @@ This approach is extremely simple, only drawback is you hardly get to decide wha
 
 But it can make up for the difficulty of dataset finding step.
 
-
+you can find the defined 
 
 2. Building an RNN
 
