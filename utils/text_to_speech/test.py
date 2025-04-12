@@ -27,6 +27,7 @@ def synthesise_and_play(text):
         inputs["input_ids"].to(device), speaker_embeddings.to(device), vocoder=vocoder
     )
     speech_numpy = speech.cpu().numpy()
+    print("Speaking")
     sd.play(speech_numpy, samplerate=16000)
     sd.wait()
 
@@ -36,3 +37,6 @@ def main():
         "what the heck is this, read this, im talking something, the current temperature is 100 degree,"
         "what is the current humidity"
     )
+
+if __name__ == "__main__":
+    main()
