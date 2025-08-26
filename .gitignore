@@ -1,0 +1,8 @@
+# Ignore models folder
+/models/
+
+# Ignore papers folder
+/papers/
+
+# Ignore logs inside Home Assistant
+/Home Assistant/logs/ 

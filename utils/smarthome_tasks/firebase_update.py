@@ -4,7 +4,7 @@ import requests
 FIREBASE_URL = 'https://smarthome-5bd40-default-rtdb.asia-southeast1.firebasedatabase.app'
 
 
-def update_device(room, device, status):
+def control_smarthome_devices(room, device, status):
     try:
         # Convert the data to JSON format
         data = {
@@ -38,8 +38,7 @@ def fetch_data(status):
             "humidity"
         ]
         urls = [
-            'https://smarthome-5bd40-default-rtdb.asia-southeast1.firebasedatabase.app/temperature.json',
-            'https://smarthome-5bd40-default-rtdb.asia-southeast1.firebasedatabase.app/humidity.json'
+            f"https://smarthome-5bd40-default-rtdb.asia-southeast1.firebasedatabase.app/{field}.json" for field in fields
         ]
     else:
         fields = [
@@ -70,7 +69,7 @@ def fetch_data(status):
 def main():
     room = 'living_room'
     data_to_send = {'fan': 1}
-    json_response = update_device(room, 'light', 1)  # To send data
+    json_response = control_smarthome_devices(room, 'light', 1)  # To send data
     print(json_response)
     data = fetch_data(status="temperature")
     print("Fetched Data:", data)

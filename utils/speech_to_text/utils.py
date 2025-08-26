@@ -2,7 +2,7 @@ from transformers.pipelines.audio_utils import ffmpeg_microphone_live
 import sys
 
 
-def transcribe(transcriber, chunk_length_s=10.0, stream_chunk_s=1.0):
+def transcribe(transcriber, chunk_length_s=7.0, stream_chunk_s=1):
     sampling_rate = transcriber.feature_extractor.sampling_rate
 
     mic = ffmpeg_microphone_live(
@@ -28,7 +28,7 @@ def launch_fn(
     wake_word="marvin",
     prob_threshold=0.5,
     chunk_length_s=2.0,
-    stream_chunk_s=0.25,
+    stream_chunk_s=1,
     debug=False,
 ):
     if wake_word not in classifier.model.config.label2id.keys():

@@ -1,7 +1,7 @@
 import ollama
 import asyncio
 from utils.general_purpose.functions import get_antonyms, get_flight_times
-from utils.smarthome_tasks.firebase_update import update_device, fetch_data
+from utils.smarthome_tasks.firebase_update import control_smarthome_devices, fetch_data
 from utils.smarthome_tasks.tools_desc import tools
 
 
@@ -40,7 +40,7 @@ async def run(model: str, user_input: str):
     if response["message"].get("tool_calls"):
         # print(f"\nThe model used some tools")
         available_functions = {
-            "update_device": update_device,
+            "update_device": control_smarthome_devices,
             "fetch_data": fetch_data,
         }
         # print(f"\navailable_function: {available_functions}")
@@ -51,7 +51,7 @@ async def run(model: str, user_input: str):
             print(f"function to call: {function_to_call}")
 
             function_response = None
-            if function_to_call == update_device:
+            if function_to_call == control_smarthome_devices:
                 function_response = function_to_call(
                     room=tool["function"]["arguments"]["room"],
                     device=tool["function"]["arguments"]["device"],
