@@ -22,7 +22,7 @@ def main():
     speaker = None
 
     while True:
-        wake_word_detector(
+        wake_word_detgit ector(
             classifier,
             debug=False
         )
