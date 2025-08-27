@@ -1,6 +1,6 @@
 # 🤖 Marvin: Smart Home Virtual Assistant
 
-A multi-agent home assistant powered by LangGraph and **Ollama**, designed to intelligently respond to user queries and control smart devices. Just say the wake word — **"marvin"** — and let the assistant take care of the rest.
+A multi-agent home assistant powered by **LangGraph** and **Ollama**, designed to intelligently respond to user queries and control smart devices. Just say the wake word — **"marvin"** — and let the assistant take care of the rest.
 
 ---
 
