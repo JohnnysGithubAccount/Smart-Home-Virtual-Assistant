@@ -6,3 +6,8 @@
 
 # Ignore logs inside Home Assistant
 /Home Assistant/logs/ 
+
+/Home Assistant/init_graph/__pycache__/
+/utils/smarthome_tasks/__pycache__/
+/utils/speech_to_text/__pycache__/
+/Home Assistant/web/frontend/

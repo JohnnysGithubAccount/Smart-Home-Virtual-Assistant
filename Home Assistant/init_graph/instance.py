@@ -94,7 +94,7 @@ graph = graph_builder.compile(
 
 # === Entrypoint ===
 def main():
-    plot_graph(graph, "instance.png")
+    plot_graph(graph, "graphs/instance.png")
 
 
 if __name__ == "__main__":

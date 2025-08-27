@@ -1,11 +1,9 @@
 from langchain_core.messages import HumanMessage, AIMessage
-from sympy.integrals.heurisch import components
 from tqdm import tqdm
 
-from instance import graph as instance_graph
+from init_graph.instance import graph as instance_graph
 from langchain_core.runnables import RunnableConfig
 from components.utils import extract_thought_and_speech
-from components.voice.speech_recognition import listen
 from components.voice.text_to_speech import speak
 import time
 
@@ -46,7 +44,10 @@ def main():
                         ai_thought, ai_response = extract_thought_and_speech(output["messages"][-1].content)
                         print("Home assistant thinking process:", ai_thought)
                         print("Home assistant:", ai_response)
-                        # speak(ai_response)
+
+                        if ai_response is None or ai_response.strip() in ["", " "]:
+                            continue
+                        speak(ai_response)
 
                         print("=" * 50)
                         print(f"[INFO] Whole process elapse time: {time.time() - start_time}")
@@ -56,10 +57,6 @@ def main():
                     print(f"[ERROR] {e}")
                 except TypeError as e:
                     print(f"[ERROR] {e}")
-
-            # Get current state after this step
-            # state = instance_graph.get_state(config)
-            # print("Current state:", state.values)
 
         for _ in tqdm(range(2), desc="Small break"):
             time.sleep(1)

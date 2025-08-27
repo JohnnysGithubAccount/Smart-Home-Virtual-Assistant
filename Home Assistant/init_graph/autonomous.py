@@ -74,7 +74,7 @@ graph = graph_builder.compile(checkpointer=memory)
 
 # === Entrypoint ===
 def main():
-    plot_graph(graph, "autonomous_graph.png")
+    plot_graph(graph, "graphs/autonomous_graph.png")
 
 
 if __name__ == "__main__":

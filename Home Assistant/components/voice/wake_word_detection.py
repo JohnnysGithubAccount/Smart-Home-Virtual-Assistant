@@ -61,7 +61,7 @@ def wake_word_detector(
     classifier,
     wake_word="marvin",
     prob_threshold=0.5,
-    chunk_length_s=1.0,
+    chunk_length_s=.5,
     stream_chunk_s=1,
     debug=False,
 ):

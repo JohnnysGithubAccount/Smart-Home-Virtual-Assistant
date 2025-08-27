@@ -1,13 +1,13 @@
 # test_graph.py
 import langgraph.errors
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import AIMessage
 from tqdm import tqdm
 
 from autonomous import graph as autonomous_graph
 from langchain_core.runnables import RunnableConfig
-from components.utils import listen, speak, extract_thought_and_speech
+from components.utils import extract_thought_and_speech
 import time
-from components.logger import setup_logger, init_loggers
+from components.logger import init_loggers
 
 
 def main():
