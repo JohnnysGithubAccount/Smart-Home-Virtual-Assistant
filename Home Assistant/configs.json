@@ -1,0 +1,32 @@
+{
+  "firebase": "https://smarthome-5bd40-default-rtdb.asia-southeast1.firebasedatabase.app",
+  "graph database": {
+    "username": "neo4j",
+    "password": "password",
+    "url": "neo4j://127.0.0.1:7687"
+  },
+  "instance": {
+    "models": {
+      "tool_llm": {
+        "model": "qwen3:1.7b",
+        "temperature": 0
+      },
+      "router_llm": {
+        "model": "qwen2.5:0.5b",
+        "temperature": 0
+      },
+      "chat_llm": {
+        "model": "qwen2.5:1.5b",
+        "temperature": 0.5
+      },
+      "summarize_llm": {
+        "model": "qwen3:4b",
+        "temperature": 0
+      },
+      "checking_llm": {
+        "model": "qwen2.5:0.5b",
+        "temperature": 0
+      }
+    }
+  }
+}

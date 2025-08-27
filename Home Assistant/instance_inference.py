@@ -1,11 +1,11 @@
 from langchain_core.messages import HumanMessage, AIMessage
 from tqdm import tqdm
+import time
 
 from init_graph.instance import graph as instance_graph
 from langchain_core.runnables import RunnableConfig
 from components.utils import extract_thought_and_speech
 from components.voice.text_to_speech import speak
-import time
 
 
 def main():

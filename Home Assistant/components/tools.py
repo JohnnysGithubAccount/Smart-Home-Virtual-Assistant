@@ -6,9 +6,13 @@ from typing import Optional
 from langgraph.types import Command, interrupt
 from .voice.text_to_speech import speak
 from .voice.speech_recognition import listen
+from .utils import load_configs
 from langchain_core.tools import tool
 import sqlite3, json
 
+
+# === Configs ===
+configs = load_configs("../Home Assistant/configs.json")
 
 # =========================================================================+
 # ASSISTANT TOOLS
@@ -61,8 +65,8 @@ def check_if_user_needs_anything_else(question):
 
 # =========================================================================+
 # SMART HOME TOOLS
-BASE_URL = "https://smarthome-5bd40-default-rtdb.asia-southeast1.firebasedatabase.app"
-
+# BASE_URL = "https://smarthome-5bd40-default-rtdb.asia-southeast1.firebasedatabase.app"
+BASE_URL = configs["firebase"]
 
 @tool
 def get_sensor_information(room: str) -> dict:

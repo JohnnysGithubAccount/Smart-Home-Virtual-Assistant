@@ -464,19 +464,6 @@ class UserChecking:
 
             print(f"\t[INFO] Elapse time: {time.time() - start_time}")
 
-            # if decision == "CONTINUE_CONFIRM":
-            #     return_dict['isContinue'] = True
-            #
-            #     print(f"[INFO] Assistant: Sure,how can i help you?")
-            #     speak("Sure,how can i help you?")
-            #     human_input = input("User: ")
-            #
-            #     return_dict["messages"] = state["messages"] + [HumanMessage(content=human_input)]
-            # elif decision == "CONTINUE_IMMEDIATELY":
-            #     return_dict['isContinue'] = True
-            # elif decision == "END":
-            #     return_dict["isContinue"] = False
-
             if decision == "CONTINUE":
                 return_dict['isContinue'] = True
 

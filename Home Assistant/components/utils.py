@@ -1,9 +1,5 @@
 import re
-
 import requests
-from langgraph.graph import StateGraph, END
-from typing import TypedDict, Literal, Optional
-import time
 
 import os
 import json
@@ -11,13 +7,8 @@ from typing import List, Annotated
 
 from typing_extensions import TypedDict
 
-from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
-from langchain_core.messages import AIMessage, ToolMessage, HumanMessage, AnyMessage
-
-import speech_recognition as sr
-import pyttsx3
-import winsound
+from langchain_core.messages import AnyMessage
 
 
 
@@ -69,6 +60,30 @@ def extract_thought_and_speech(text):
     speech = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
 
     return thought, speech
+
+
+def load_configs(path="config.json"):
+    """
+    Loads configuration settings from a JSON file.
+
+    Args:
+        path (str): Path to the JSON config file. Defaults to 'config.json'.
+
+    Returns:
+        dict: Parsed configuration data as a dictionary.
+
+    Raises:
+        FileNotFoundError: If the file does not exist.
+        json.JSONDecodeError: If the file is not valid JSON.
+    """
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"Config file not found at: {path}")
+
+    with open(path, 'r') as file:
+        config = json.load(file)
+
+    return config
+
 
 
 def main():
