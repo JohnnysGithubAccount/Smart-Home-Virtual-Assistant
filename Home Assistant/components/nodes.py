@@ -22,6 +22,7 @@ from .utils import get_room_devices, State, extract_thought_and_speech
 from .llm import StopStreamingException, ToolCallStreamHandler
 from .longterm_memory import MemoryHelper
 from .voice.text_to_speech import speak
+from .voice.speech_recognition import listen
 
 
 # === Wait Node ===
@@ -117,7 +118,7 @@ class Agent:
             input_messages = messages[-1]
 
         # the history is the last 5 messages, if isAutonomous, do not care for history
-        history = messages[-5:]
+        history = messages[-10:]
 
         print(f"\t\t{'-' * 50}")
         print(f"\t\t[INFO] History")
@@ -282,17 +283,19 @@ class ChatRouter:
 
         decision = state["conversationType"].strip().upper()
 
-        print(f"\t[INFO] Elapse time: {time.time() - start_time}")
         print(f"\t[DEBUG] decision: {decision}")
 
         if decision == "TOOL":
             print(f"\t[DEBUG] Routing to {decision}")
+            print(f"\t[INFO] Elapse time: {time.time() - start_time}")
             return "control devices"
         elif decision == "CHAT":
             print(f"\t[DEBUG] Routing to {decision}")
+            print(f"\t[INFO] Elapse time: {time.time() - start_time}")
             return "normal Q&A"
         else:
             print(f"\[ERROR] Wrong input: {state['conversationType']}")
+            print(f"\t[INFO] Elapse time: {time.time() - start_time}")
             return "normal Q&A"
 
 
@@ -428,8 +431,8 @@ class UserChecking:
         Your only task is to decide if the user wants to continue the conversation or if they are finished. 
         
         Rules: 
-        - If the user asks a question, makes a request, or gives instructions (demand to turn something on or off, demand to adjust some devices, or ask question) → respond with exactly "CONTINUE". 
-        - If the user says goodbye, thanks you, or shows no further intention to continue the conversation with your → respond with exactly "END".
+        - If the user sentence means they are still making conversation like asks a question, makes a request, or gives instructions (demand to turn something on or off, demand to adjust some devices, or ask question) → respond with exactly "CONTINUE". 
+        - If the user sentence means they want to end the conversation → respond with exactly "END".
         - Do not explain, do not add punctuation, do not output anything else. 
         Your output must be either CONTINUE or END only. 
         """
@@ -443,12 +446,13 @@ class UserChecking:
     def __call__(self, state):
         start_time = time.time()
 
-        print("[INFO] Running ChatClassifier node")
+        print("[INFO] Running UserChecking node")
 
         # Extract last user message
-        print(f"Assistant: Are there anything else?")
-        speak("Are there anything else?")
+        # print(f"Assistant: Are there anything else?")
+        # speak("Are there anything else?")
         user_message = input("User: ")
+        # user_message = listen()
 
         return_dict = {}
         try:
@@ -467,7 +471,8 @@ class UserChecking:
             if decision == "CONTINUE":
                 return_dict['isContinue'] = True
 
-                return_dict["messages"] = state["messages"] + [AIMessage(content="Are there anything else?"), HumanMessage(content=user_message)]
+                # return_dict["messages"] = state["messages"] + [AIMessage(content="Are there anything else?"), HumanMessage(content=user_message)]
+                return_dict["messages"] = state["messages"] + [HumanMessage(content=user_message)]
             elif decision == "END":
                 return_dict["isContinue"] = False
 

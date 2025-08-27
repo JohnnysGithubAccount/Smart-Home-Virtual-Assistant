@@ -58,6 +58,7 @@ def extract_thought_and_speech(text):
 
     # Remove all <think>...</think> blocks for the speech part
     speech = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+    speech = speech.replace("**", "")
 
     return thought, speech
 

@@ -113,7 +113,7 @@ conda activate assistant
 Now install the requirements
 
 ```bash
-pip install requirements.txt
+pip install -r requirements.txt
 cd "Home Assistant"
 ```
 

@@ -21,7 +21,8 @@ def init():
     # === LangGraph config ===
     config = RunnableConfig(
         run_name="graph_test_run",
-        configurable={"thread_id": "1"}
+        configurable={"thread_id": "test-thread-1"},
+        recursion_limit=100
     )
 
     # === Long-term Memory Configs ===

@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import requests
 from typing import Dict
 from langchain_core.tools import tool
@@ -9,12 +11,14 @@ from .voice.speech_recognition import listen
 from .utils import load_configs
 from langchain_core.tools import tool
 import sqlite3, json
+from apscheduler.schedulers.background import BackgroundScheduler
+from dateutil import parser  # More flexible date parsing
 
 
 # === Configs ===
 configs = load_configs("../Home Assistant/configs.json")
 
-# =========================================================================+
+# ==========================================================================
 # ASSISTANT TOOLS
 @tool
 def human_assistance(
@@ -46,26 +50,23 @@ def human_assistance(
         "human_response": human_input
     }
 
+
+# ==========================================================================
+# COMMON TOOLS
+
 @tool
-def check_if_user_needs_anything_else(question):
-    """
-    Check with user if there are anything else to do, just to make sure.
+def get_current_date_time() -> str:
+    """Get the current date, time, and weekday as a string."""
+    return datetime.now().strftime("%A, %B %d, %Y at %I:%M %p")
 
-    Args:
-        question: the question you want to ask user to make sure there are nothing else user want you to do
-    """
-    print(f"[CHECKING] Assistant: {question}")
-    speak(question)
-    # human_input = listen()
-    human_input = input("User:")
-    return {
-        "question": question,
-        "human_response": human_input
-    }
 
-# =========================================================================+
+# @tool
+# def web_search(query):
+#     pass
+
+
+# ==========================================================================
 # SMART HOME TOOLS
-# BASE_URL = "https://smarthome-5bd40-default-rtdb.asia-southeast1.firebasedatabase.app"
 BASE_URL = configs["firebase"]
 
 @tool
@@ -189,74 +190,96 @@ def control_heater(target_temp: int, room: str):
     room = room.strip().replace(' ', "_")
     return update_device(room, "heater", target_temp)
 
-# =========================================================================+
-# ADVANCE TOOLS
+# ==========================================================================
+# SCHEDULE TASKS
 
-DB_PATH = "schedules.db"
+scheduler = BackgroundScheduler()
+scheduler.start()
 
-# simple sqlite storage
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS schedules
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                  tool_name TEXT,
-                  args TEXT,
-                  time TEXT,
-                  repeat TEXT)''')
-    conn.commit()
-    conn.close()
+tool_registry = [
+    control_lights,  # Control lights
+    control_heater,  # Control the heater
+    control_air_conditioner,  # Control the air conditioner
+    control_humidifier,  # Control the humidifier
+    control_lamp,  # Control the lamp
+    control_stove,  # Control the stove
+    control_oven,  # Control the oven
+]
+
+tool_registry_names = [func.name for func in tool_registry]
+
+tool_registry_dict = dict(zip(tool_registry_names, tool_registry))
+
+def invoke_tool(tool_warped, args):
+    return tool_warped.invoke(args)
 
 
-from datetime import datetime, timedelta
-
-
-
-# === This is the function your model can call ===
 @tool
-def make_schedule_tool_call(
-    tool_name: str,
-    args: dict,
-    time: str,
-    repeat: str = "once",
-    duration: str = None,
-    end_time: str = None
-) -> str:
+def schedule_tool_call(tool_name: str, arguments: dict, run_date: str, repeat_type: str):
     """
-    Create a schedule for a tool call.
+    Schedule a tool function to run at a specific time, either once or on a recurring basis.
 
-    Args:
-        tool_name (str): Name of the tool to call (e.g., 'control_lights').
-        args (dict): Arguments for the tool (e.g., {"room": "kitchen", "status": "on"}).
-        time (str): When to start (e.g., '19:00', '2025-08-20T18:00:00', 'every 30m').
-        repeat (str, optional): "once", "daily", "weekly", or "periodic". Defaults to "once".
-        duration (str, optional): Duration to keep the tool active (e.g., "1h", "30m").
-        end_time (str, optional): When to stop repeating (absolute time or "after 1h").
+    This function allows the AI agent to register a future task using one of the available smart home tools.
+    It supports both single execution and daily repetition. The scheduled job will be managed by APScheduler
+    and executed with the provided arguments at the designated time.
 
-    Returns:
-        str: A JSON string representing the schedule.
+    Parameters:
+        tool_name (str): The name of the tool function to execute. Must match a key in the tools' registry.
+        arguments (dict): A dictionary of keyword arguments to pass to the tool function when it runs.
+        run_date (str): The time to run the task, in ISO 8601 format (e.g. "2025-08-27T19:30:00").
+        repeat_type (str): The repetition mode. Supported values:
+            - "single": Run once at the specified time.
+            - "daily": Run every day at the same time.
+
+    Example Usage:
+        "Turn on the bedroom lights every day at 19:30"
+        schedule_tool_call(
+            function_name="control_lights",
+            arguments={"room": "bedroom", status: "on"},
+            run_date="2025-08-27T19:30:00",
+            repeat_type="daily"
+        )
     """
 
-    schedule = {
-        "scheduled": True,
-        "tool": tool_name,
-        "args": args,
-        "time": time,
-        "repeat": repeat,
-    }
+    func = tool_registry_dict[tool_name]
+    run_time = parser.parse(run_date)
 
-    if duration:
-        schedule["duration"] = duration
-    if end_time:
-        schedule["end_time"] = end_time
+    job_id = f"{tool_name}_{run_time.strftime('%Y%m%d%H%M%S')}_{arguments}"
 
-    return json.dumps(schedule, indent=2)
+    if repeat_type == "single":
+        scheduler.add_job(
+            invoke_tool,
+            trigger='date',
+            run_date=run_time,
+            args=[func, arguments],
+            id=job_id,
+            name=tool_name
+        )
+    elif repeat_type == "daily":
+        scheduler.add_job(
+            invoke_tool,
+            trigger='cron',
+            hour=run_time.hour,
+            minute=run_time.minute,
+            args=[func, arguments],
+            id=job_id,
+            name=tool_name
+        )
+    else:
+        return {"status": "failed", "message": f"Failed to set the schedule due to some formating error"}
+
+    print(f"\t[DEBUG]Scheduled '{tool_name}' with repeat_type '{repeat_type}' at {run_time}")
+
+    return {'status': "success", "message": "set schedule task"}
 
 
 # === Tools ===
 tools = [
     human_assistance,  # Human in the loop
     # check_if_user_needs_anything_else,  # Check if user needs anything else before ending
+    get_sensor_information,  # Get sensors information (temperature, humidity)
+    schedule_tool_call,
+    # get_current_date_time,
 
     control_lights,  # Control lights
     control_heater,  # Control the heater
@@ -265,7 +288,14 @@ tools = [
     control_lamp,  # Control the lamp
     control_stove,  # Control the stove
     control_oven,  # Control the oven
-    get_sensor_information,  # Get sensors information (temperature, humidity)
 ]
 
 tool_names = [func.name for func in tools]
+
+chat_tools = [
+    human_assistance,
+    get_current_date_time,
+    # web_search
+]
+
+chat_tool_names = [func.name for func in tools]

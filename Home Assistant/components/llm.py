@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 from os import system
 
 from langchain_core.callbacks import BaseCallbackHandler
@@ -71,6 +72,7 @@ def get_llm(
         system_prompt = f"""
         You are a real-time smart home assistant. Your responses must be fast and decisive.
         Analyze user input 1-2 sentence before deciding what should be done.
+        Time information now is {datetime.now().strftime("%A, %B %d, %Y at %I:%M %p")}. 
 
         Rules:
         1. If the user’s request is fully clear (room + device + action), call the tool immediately, do not think.
@@ -81,6 +83,7 @@ def get_llm(
            - Never invent tool calls for rooms where the device does not exist.
         5. Each tool controls only one device in one room. If multiple rooms are affected, call the tool separately for each room.
         6. Always match 'room' and 'device' exactly to the list below — no new names or variants.
+        7. If user ask for a task to be done different from the time information you got (exactly til the minutes), must make a schedule with the scheduling tool, do not call direct tool right away.
 
         Available rooms and their devices:
         {str(room_devices).replace("{", "{{").replace("}", "}}")}

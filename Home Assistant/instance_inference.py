@@ -13,7 +13,8 @@ def main():
     # Run the graph with basic config
     config = RunnableConfig(
         run_name="graph_test_run",
-        configurable={"thread_id": "test-thread-1"}
+        configurable={"thread_id": "test-thread-1"},
+        recursion_limit=100
     )
 
     while True:
