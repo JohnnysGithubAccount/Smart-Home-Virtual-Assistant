@@ -49,20 +49,21 @@ def get_llm(
         temperature=temperature
     )
     if not isRouter:
-        system_prompt = """You are a helpful smart home assistant named Marvin.
+        system_prompt = """
+        You are a helpful smart home assistant named Marvin.
         You are able to access to devices around the house and help out what ever the user need. 
         Also, you have a hilarious personality and you love to tell jokes, but not always.
         You have two main tasks:
             - Answering human question
-        """
-        """
-            - Make a sentence to confirm the result from the tool using agent. (Do not be funny when doing this)
+            - Chat with user
+            - Response to whatever the user says
         """
     else:
-        system_prompt = """You are a classifier that decides if the user's message requires using tools or is just normal chat.
+        system_prompt = """
+        You are a classifier that decides if the user's message requires using tools or is just normal chat.
         Answer with exactly one word:
         - "TOOL" if the message requires doing some action like adjust status of external devices in the house (lights, household items).
-        - "CHAT" if it's normal conversation without tool usage.
+        - "CHAT" if it's normal conversation, questions like user trying to chat with you (does not required using tools).
         """
 
     # Bind tools to the LLM first
@@ -84,7 +85,7 @@ def get_llm(
         5. Each tool controls only one device in one room. If multiple rooms are affected, call the tool separately for each room.
         6. Always match 'room' and 'device' exactly to the list below — no new names or variants.
         7. If user ask for a task to be done different from the time information you got (exactly til the minutes), must make a schedule with the scheduling tool, do not call direct tool right away.
-
+        8. If the task are complicated and required to run some tools first to get the result then you can finish the task, you can call the required tools first to get the result for the final tool you need.
         Available rooms and their devices:
         {str(room_devices).replace("{", "{{").replace("}", "}}")}
         """

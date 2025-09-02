@@ -22,7 +22,7 @@ from .utils import get_room_devices, State, extract_thought_and_speech
 from .llm import StopStreamingException, ToolCallStreamHandler
 from .longterm_memory import MemoryHelper
 from .voice.text_to_speech import speak
-from .voice.speech_recognition import listen
+from .voice.speech_to_text import listen
 
 
 # === Wait Node ===
@@ -405,8 +405,9 @@ class LongTermMemory:
 
     def __call__(self, state):
         text = self.memory.summarize_messages(state["messages"])
-        _, response = extract_thought_and_speech(text)
-        self.memory.text_to_graph(response)
+        print(text)
+        # _, response = extract_thought_and_speech(text)
+        self.memory.text_to_graph(text)
 
 
 # === Long Term Memory ===
@@ -451,8 +452,8 @@ class UserChecking:
         # Extract last user message
         # print(f"Assistant: Are there anything else?")
         # speak("Are there anything else?")
-        user_message = input("User: ")
-        # user_message = listen()
+        # user_message = input("User: ")
+        user_message = listen()
 
         return_dict = {}
         try:

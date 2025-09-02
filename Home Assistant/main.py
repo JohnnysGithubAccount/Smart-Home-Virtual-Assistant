@@ -11,8 +11,8 @@ from langchain_core.runnables import RunnableConfig
 
 from init_graph.instance import graph as instance_graph
 
-from components.utils import extract_thought_and_speech
-from components.voice.speech_recognition import listen
+from components.utils import extract_thought_and_speech, plot_graph
+from components.voice.speech_to_text import listen
 from components.voice.text_to_speech import speak
 from components.voice.wake_word_detection import wake_word_detector
 
@@ -117,6 +117,7 @@ def run():
 
 
 def main():
+    plot_graph(instance_graph, "graphs/instance.png")
     run()
 
 

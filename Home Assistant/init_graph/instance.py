@@ -3,7 +3,7 @@ from langgraph.graph import StateGraph, START
 from langgraph.checkpoint.memory import InMemorySaver
 
 # === Modules ===
-from components.tools import tools, tool_names
+from components.tools import tools, tool_names, chat_tool_names, chat_tools
 from components.llm import get_llm
 from components.nodes import Tools, Sensors, ToolRouter, Agent, ChatRouter, ChatClassifier
 from components.nodes import LongTermMemory, UserChecking, IsContinueRouter
@@ -52,6 +52,7 @@ chat_classifier = ChatClassifier(llm=router_llm)
 chat_agent = Agent(chat_llm)
 tool_agent = Agent(tool_llm, isToolCallingModel=True)
 tool_node = Tools(tools=tools)
+chat_tool_node = Tools(tools=chat_tools)
 long_term_memory_node = LongTermMemory(
     url=configs["graph database"]["url"],
     username=configs["graph database"]["username"],
@@ -75,14 +76,16 @@ graph_builder.add_node("chat_classifier", chat_classifier)
 graph_builder.add_node("chat_agent", chat_agent)
 graph_builder.add_node("tool_agent", tool_agent)
 graph_builder.add_node("tools_execution", tool_node)
+graph_builder.add_node("chat_tools", chat_tool_node)
 graph_builder.add_node("user_checking", checking_user)
 graph_builder.add_node("long_term_memory", long_term_memory_node)
 
 # === Graph Edges Definition ===
 graph_builder.add_edge(START, "chat_classifier")
-graph_builder.add_edge("chat_agent", "user_checking")
+# graph_builder.add_edge("chat_agent", "user_checking")
 graph_builder.add_edge("tools_execution", "tool_agent")
 graph_builder.add_edge("long_term_memory", END)
+graph_builder.add_edge("chat_tools", "chat_agent")
 
 # === Conditional edges ===
 graph_builder.add_conditional_edges(
@@ -98,7 +101,14 @@ graph_builder.add_conditional_edges(
     tool_router,
     {
         "executing tools": "tools_execution",
-        # END: END,
+        "check user": "user_checking",
+    }
+)
+graph_builder.add_conditional_edges(
+    "chat_agent",
+    tool_router,
+    {
+        "executing tools": "chat_tools",
         "check user": "user_checking",
     }
 )

@@ -1,5 +1,6 @@
 {
-  "firebase": "https://smarthome-5bd40-default-rtdb.asia-southeast1.firebasedatabase.app",
+  "personal_firebase": "https://smarthome-5bd40-default-rtdb.asia-southeast1.firebasedatabase.app",
+  "firebase": "https://tro-ly-ao-22e6a-default-rtdb.firebaseio.com",
   "graph database": {
     "username": "neo4j",
     "password": "password",

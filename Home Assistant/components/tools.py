@@ -1,18 +1,21 @@
+import os
 from datetime import datetime
 
 import requests
 from typing import Dict
 from langchain_core.tools import tool
+from langchain_tavily import TavilySearch
 from typing import List
 from typing import Optional
 from langgraph.types import Command, interrupt
 from .voice.text_to_speech import speak
-from .voice.speech_recognition import listen
+from .voice.speech_to_text import listen
 from .utils import load_configs
 from langchain_core.tools import tool
 import sqlite3, json
 from apscheduler.schedulers.background import BackgroundScheduler
 from dateutil import parser  # More flexible date parsing
+import requests
 
 
 # === Configs ===
@@ -39,8 +42,8 @@ def human_assistance(
     print(f"[CURIOSITY] Assistant: {what_to_ask}")
     speak(what_to_ask)
 
-    human_input = input("User: ")
-    # human_input = listen()
+    # human_input = input("User: ")
+    human_input = listen()
     # human_input = "the whole house"
     print(f"User: {human_input}")
 
@@ -60,10 +63,8 @@ def get_current_date_time() -> str:
     return datetime.now().strftime("%A, %B %d, %Y at %I:%M %p")
 
 
-# @tool
-# def web_search(query):
-#     pass
-
+os.environ["TAVILY_API_KEY"] = "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"
+search_tool = TavilySearch(max_results=2)
 
 # ==========================================================================
 # SMART HOME TOOLS
@@ -77,6 +78,7 @@ def get_sensor_information(room: str) -> dict:
         room (str): The room you expect to get information from.
     """
     url = f"{BASE_URL}/test/{room}/sensors.json"
+    url = f"{BASE_URL}/{room}/sensors.json"
     response = requests.get(url)
 
     if response.status_code == 200:
@@ -94,6 +96,7 @@ def get_sensor_information(room: str) -> dict:
 
 def update_device(room: str, device: str, value) -> Dict:
     url = f"{BASE_URL}/test/{room}/device.json"
+    url = f"{BASE_URL}/{room}/device.json"
     payload = {device: value}
     response = requests.patch(url, json=payload)
     if response.status_code == 200:
@@ -210,6 +213,7 @@ tool_registry_names = [func.name for func in tool_registry]
 
 tool_registry_dict = dict(zip(tool_registry_names, tool_registry))
 
+
 def invoke_tool(tool_warped, args):
     return tool_warped.invoke(args)
 
@@ -279,6 +283,7 @@ tools = [
     # check_if_user_needs_anything_else,  # Check if user needs anything else before ending
     get_sensor_information,  # Get sensors information (temperature, humidity)
     schedule_tool_call,
+    search_tool,
     # get_current_date_time,
 
     control_lights,  # Control lights
@@ -295,6 +300,7 @@ tool_names = [func.name for func in tools]
 chat_tools = [
     human_assistance,
     get_current_date_time,
+    search_tool
     # web_search
 ]
 
