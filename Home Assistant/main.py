@@ -11,8 +11,8 @@ from langchain_core.runnables import RunnableConfig
 
 from init_graph.instance import graph as instance_graph
 
-from components.utils import extract_thought_and_speech
-from components.voice.speech_recognition import listen
+from components.utils import extract_thought_and_speech, plot_graph
+from components.voice.speech_to_text import listen
 from components.voice.text_to_speech import speak
 from components.voice.wake_word_detection import wake_word_detector
 
@@ -21,7 +21,8 @@ def init():
     # === LangGraph config ===
     config = RunnableConfig(
         run_name="graph_test_run",
-        configurable={"thread_id": "1"}
+        configurable={"thread_id": "test-thread-1"},
+        recursion_limit=100
     )
 
     # === Long-term Memory Configs ===
@@ -116,6 +117,7 @@ def run():
 
 
 def main():
+    plot_graph(instance_graph, "graphs/instance.png")
     run()
 
 

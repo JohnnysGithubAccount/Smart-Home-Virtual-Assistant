@@ -3,21 +3,46 @@ from langgraph.graph import StateGraph, START
 from langgraph.checkpoint.memory import InMemorySaver
 
 # === Modules ===
-from components.tools import tools, tool_names
+from components.tools import tools, tool_names, chat_tool_names, chat_tools
 from components.llm import get_llm
 from components.nodes import Tools, Sensors, ToolRouter, Agent, ChatRouter, ChatClassifier
 from components.nodes import LongTermMemory, UserChecking, IsContinueRouter
-from components.utils import State, plot_graph
+from components.utils import State, plot_graph, load_configs
 
+
+# === Get configs ===
+configs = load_configs("../Home Assistant/configs.json")
 
 # === Initialize Components ===
-# tool_llm = get_llm(name="llama3.2:1b", temperature=0, tools=tools)
-tool_llm = get_llm(name="qwen3:1.7b", temperature=0., tools=tools)
-# tool_llm = get_llm(name="qwen3:0.6b", temperature=0., tools=tools)
-router_llm = get_llm(name="qwen2.5:0.5b", temperature=0., tools=None, isRouter=True)
-chat_llm = get_llm(name="qwen2.5:1.5b", temperature=0.5, tools=None)
-summarize_llm = get_llm(name="qwen3:4b", temperature=0., tools=None, isSummarize=True)
-checking_llm = get_llm(name="qwen2.5:0.5b", temperature=0., tools=None, isSummarize=True)
+tool_llm = get_llm(
+    name=configs["instance"]["models"]["tool_llm"]["model"],
+    temperature=configs["instance"]["models"]["tool_llm"]["temperature"],
+    tools=tools
+)
+router_llm = get_llm(
+    name=configs["instance"]["models"]["router_llm"]["model"],
+    temperature=configs["instance"]["models"]["router_llm"]["temperature"],
+    tools=None,
+    isRouter=True
+)
+chat_llm = get_llm(
+    name=configs["instance"]["models"]["chat_llm"]["model"],
+    temperature=configs["instance"]["models"]["chat_llm"]["temperature"],
+    tools=None
+)
+summarize_llm = get_llm(
+    name=configs["instance"]["models"]["summarize_llm"]["model"],
+    temperature=configs["instance"]["models"]["summarize_llm"]["temperature"],
+    tools=None,
+    isSummarize=True
+)
+checking_llm = get_llm(
+    name=configs["instance"]["models"]["checking_llm"]["model"],
+    temperature=configs["instance"]["models"]["checking_llm"]["temperature"],
+    tools=None,
+    isSummarize=True
+)
+
 
 # === Long-term memory ===
 memory = InMemorySaver()
@@ -27,10 +52,11 @@ chat_classifier = ChatClassifier(llm=router_llm)
 chat_agent = Agent(chat_llm)
 tool_agent = Agent(tool_llm, isToolCallingModel=True)
 tool_node = Tools(tools=tools)
+chat_tool_node = Tools(tools=chat_tools)
 long_term_memory_node = LongTermMemory(
-    url="neo4j://127.0.0.1:7687",
-    username="neo4j",
-    password="thanhxuan2601",
+    url=configs["graph database"]["url"],
+    username=configs["graph database"]["username"],
+    password=configs["graph database"]["password"],
     llm=summarize_llm
 )
 checking_user = UserChecking(llm=checking_llm)
@@ -50,14 +76,16 @@ graph_builder.add_node("chat_classifier", chat_classifier)
 graph_builder.add_node("chat_agent", chat_agent)
 graph_builder.add_node("tool_agent", tool_agent)
 graph_builder.add_node("tools_execution", tool_node)
+graph_builder.add_node("chat_tools", chat_tool_node)
 graph_builder.add_node("user_checking", checking_user)
 graph_builder.add_node("long_term_memory", long_term_memory_node)
 
 # === Graph Edges Definition ===
 graph_builder.add_edge(START, "chat_classifier")
-graph_builder.add_edge("chat_agent", "user_checking")
+# graph_builder.add_edge("chat_agent", "user_checking")
 graph_builder.add_edge("tools_execution", "tool_agent")
 graph_builder.add_edge("long_term_memory", END)
+graph_builder.add_edge("chat_tools", "chat_agent")
 
 # === Conditional edges ===
 graph_builder.add_conditional_edges(
@@ -73,7 +101,14 @@ graph_builder.add_conditional_edges(
     tool_router,
     {
         "executing tools": "tools_execution",
-        # END: END,
+        "check user": "user_checking",
+    }
+)
+graph_builder.add_conditional_edges(
+    "chat_agent",
+    tool_router,
+    {
+        "executing tools": "chat_tools",
         "check user": "user_checking",
     }
 )
