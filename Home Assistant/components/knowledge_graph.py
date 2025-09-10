@@ -70,16 +70,16 @@ def main():
     # Use Ollama’s embedding model
     embeddings = OllamaEmbeddings(model="nomic-embed-text")
 
-    vector_index = Neo4jVector.from_existing_graph(
-        embeddings,
-        url=url,
-        username=username,
-        password=password,
-        index_name="device_index",
-        node_label="Device",
-        text_node_properties=["id", "type", "room", "value"],
-        embedding_node_property="embedding",
-    )
+    # vector_index = Neo4jVector.from_existing_graph(
+    #     embeddings,
+    #     url=url,
+    #     username=username,
+    #     password=password,
+    #     index_name="device_index",
+    #     node_label="Device",
+    #     text_node_properties=["id", "type", "room", "value"],
+    #     embedding_node_property="embedding",
+    # )
     vector_index = Neo4jVector.from_existing_graph(
         embeddings,
         url=url,

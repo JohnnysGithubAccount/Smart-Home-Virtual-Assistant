@@ -13,3 +13,5 @@
 /Home Assistant/web/frontend/
 olds/
 
+/Home Assistant/components/voice/tokens.json
+/Home Assistant/components/voice/debug/

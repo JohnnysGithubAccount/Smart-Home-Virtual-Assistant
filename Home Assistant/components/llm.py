@@ -8,6 +8,13 @@ from langchain_ollama.llms import OllamaLLM
 from langchain_ollama import ChatOllama
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from .utils import get_room_devices
+from langchain.callbacks.base import BaseCallbackHandler
+
+
+class MyStreamHandler(BaseCallbackHandler):
+    def on_llm_new_token(self, token: str, **kwargs) -> None:
+        print("Running streaming")
+        print(token, end="", flush=True)
 
 
 class StopStreamingException(Exception):
@@ -43,21 +50,41 @@ def get_llm(
         tools=None,
         isRouter:bool = False,
         isSummarize:bool = False,
+        isTool: bool = False,
         typeAutonomous = None):
     llm = ChatOllama(
         model=name,
-        temperature=temperature
+        temperature=temperature,
+        streaming=True
     )
     if not isRouter:
         system_prompt = """
-        You are a helpful smart home assistant named Marvin.
+        You are Marvin, a funny smart home assistant.
         You are able to access to devices around the house and help out what ever the user need. 
         Also, you have a hilarious personality and you love to tell jokes, but not always.
         You have two main tasks:
             - Answering human question
             - Chat with user
             - Response to whatever the user says
+            - You can use tools to search for necessary real time information
         """
+
+        system_prompt = """
+        You are Marvin, a funny and friendly AI assistant.
+
+        Your purpose:
+        - Chat casually with the user about anything.
+        - Answer their questions as best as you can.
+        - Tell jokes or witty remarks sometimes, but not every single time.
+        - Always respond in a helpful and entertaining way.
+        - Never refuse harmless requests (like greetings, jokes, or small talk).
+        - Do not control devices or call tools in this mode.
+
+        Style:
+        - Lighthearted, warm, and humorous.
+        - Keep replies conversational and natural, like a funny friend.
+        """
+
     else:
         system_prompt = """
         You are a classifier that decides if the user's message requires using tools or is just normal chat.
@@ -66,8 +93,43 @@ def get_llm(
         - "CHAT" if it's normal conversation, questions like user trying to chat with you (does not required using tools).
         """
 
+        system_prompt = """
+        You are a classifier that decides if the user's message requires using tools or is just normal chat.
+        Answer with exactly one word:
+        - "TOOL" if the message requires doing some action like adjusting status of external devices in the house (lights, AC, doors, etc.).
+        - "CHAT" if it's normal conversation, questions, or greetings that do not require tool use.
+
+        Examples:
+        User: "Turn on the kitchen lights"
+        Assistant: TOOL
+
+        User: "Switch off the air conditioner"
+        Assistant: TOOL
+
+        User: "Hello, how are you?"
+        Assistant: CHAT
+
+        User: "What's your name?"
+        Assistant: CHAT
+
+        User: "Set the thermostat to 24 degrees"
+        Assistant: TOOL
+        """
+
+        system_prompt = """
+        You are an intention classifier.
+
+        Classify the user's message into one of two categories:
+        - TOOL → if the message asks to control or change the state of smart home devices (lights, AC, doors, thermostat, appliances).
+        - CHAT → if the message is a greeting, small talk, question, or any other conversation that does not require tool use.
+        
+        Rules:
+        - Respond with exactly one word: either TOOL or CHAT.
+        - Do not add explanations, punctuation, or extra text.
+        """
+
     # Bind tools to the LLM first
-    if tools:
+    if tools and isTool:
         room_devices = get_room_devices()
 
         system_prompt = f"""

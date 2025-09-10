@@ -17,7 +17,8 @@ configs = load_configs("../Home Assistant/configs.json")
 tool_llm = get_llm(
     name=configs["instance"]["models"]["tool_llm"]["model"],
     temperature=configs["instance"]["models"]["tool_llm"]["temperature"],
-    tools=tools
+    tools=tools,
+    isTool=True
 )
 router_llm = get_llm(
     name=configs["instance"]["models"]["router_llm"]["model"],
@@ -28,7 +29,7 @@ router_llm = get_llm(
 chat_llm = get_llm(
     name=configs["instance"]["models"]["chat_llm"]["model"],
     temperature=configs["instance"]["models"]["chat_llm"]["temperature"],
-    tools=None
+    tools=chat_tools
 )
 summarize_llm = get_llm(
     name=configs["instance"]["models"]["summarize_llm"]["model"],

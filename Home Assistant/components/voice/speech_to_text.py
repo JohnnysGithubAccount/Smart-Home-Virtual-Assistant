@@ -17,7 +17,7 @@ from pyannote.audio.core.io import Audio
 from pyannote.core import Segment
 import ffmpeg
 import json
-from utils import load_tokens, check_overlap
+from .utils import load_tokens
 import soundfile as sf
 
 
@@ -116,7 +116,8 @@ def listen(using_gg: bool = False):
     if using_gg:
         text = speech_to_text_google()
     else:
-        text = transcribe_with_vad()
+        text = input("User: ")
+        # text = transcribe_with_vad()
 
     return text
 

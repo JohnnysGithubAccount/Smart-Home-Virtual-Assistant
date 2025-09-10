@@ -19,10 +19,11 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 # from tools import tools
 # from langgraph.checkpoint.memory import InMemorySaver
 from .utils import get_room_devices, State, extract_thought_and_speech
-from .llm import StopStreamingException, ToolCallStreamHandler
+from .llm import StopStreamingException, ToolCallStreamHandler, MyStreamHandler
 from .longterm_memory import MemoryHelper
 from .voice.text_to_speech import speak
 from .voice.speech_to_text import listen
+from langchain_core.messages import AIMessageChunk
 
 
 # === Wait Node ===
@@ -78,6 +79,7 @@ class Agent:
         self.llm = llm  # LLM with tools already bound
         self.isAutonomous = isAutonomous
         self.isToolCallingModel = isToolCallingModel
+        self.handler = MyStreamHandler()
 
     def __call__(self, state: State):
         start_time = time.time()
@@ -133,10 +135,24 @@ class Agent:
 
         print(f"\t\t[DEBUG] Input dict: {input_dict}")
 
+        # chunks = []
+        # for chunk in self.llm.stream(input_dict, callbacks=[self.handler]):
+        #     if chunk.content:
+        #         print(chunk.content, end="", flush=True)
+        #     chunks.append(chunk)
+        #
+        # # Manually merge into a full AIMessage
+        # final_msg = AIMessage(
+        #     content="".join([c.content for c in chunks if c.content]),
+        #     tool_calls=[tc for c in chunks for tc in (c.tool_calls or [])],
+        #     additional_kwargs={k: v for c in chunks for k, v in (c.additional_kwargs or {}).items()},
+        #     response_metadata={k: v for c in chunks for k, v in (c.response_metadata or {}).items()},
+        # )
+        #
+        # llm_response = final_msg.content
+        # print("\n\nFinal text:", final_msg.content)
         llm_response = self.llm.invoke(input_dict)
-
-        # print(f"\t[INFO] LLM Response")
-        # print(f"\t{llm_response.content}")
+        print(f"\t\t[DEBUG]Tool calls:", llm_response.tool_calls)
 
         print(f"\t[INFO] Elapse time: {time.time() - start_time}")
         return_dict = {
@@ -326,13 +342,14 @@ class ChatClassifier:
 
         return_dict = {}
         try:
-            # Pass the message to the LLM (system prompt is already baked into self.llm)
+            history = state["messages"][-5:]
             result = self.llm.invoke(
                 {
                     "input": user_message,
-                    "history": []
+                    "history": history
                 }
             ).content
+            _, result = extract_thought_and_speech(result)
             print(f"\t[INFO] User input type: {result}")
             decision = result.strip().upper()
 
@@ -464,8 +481,11 @@ class UserChecking:
                     "history": []
                 }
             ).content
-            print(f"\t[INFO] User input type: {result}")
-            decision = result.strip().upper()
+            print(f"\t[INFO] User input type: {type(result)}")
+            decision = result.strip()
+            _, decision = extract_thought_and_speech(decision)
+            decision = decision.strip().upper()
+            print(f"\t[DEBUG] Decision: {decision}")
 
             print(f"\t[INFO] Elapse time: {time.time() - start_time}")
 

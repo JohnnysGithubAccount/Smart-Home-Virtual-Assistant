@@ -95,23 +95,32 @@ def get_sensor_information(room: str) -> dict:
 
 
 def update_device(room: str, device: str, value) -> Dict:
-    url = f"{BASE_URL}/test/{room}/device.json"
-    url = f"{BASE_URL}/{room}/device.json"
-    payload = {device: value}
-    response = requests.patch(url, json=payload)
-    if response.status_code == 200:
-        return {
-            "status": "success",
-            "room": room,
-            "device": device,
-            "new_value": value
-        }
-    else:
+    try:
+        url = f"{BASE_URL}/test/{room}/device.json"
+        url = f"{BASE_URL}/{room}/device.json"
+        payload = {device: value}
+        response = requests.patch(url, json=payload)
+        if response.status_code == 200:
+            return {
+                "status": "success",
+                "room": room,
+                "device": device,
+                "new_value": value
+            }
+        else:
+            return {
+                "status": "error",
+                "code": response.status_code,
+                "message": response.text
+            }
+    except Exception as e:
+        print(f"[ERROR] Function name: control_lights")
+        print(f"[ERROR] Error: {e}")
         return {
             "status": "error",
-            "code": response.status_code,
-            "message": response.text
+            "message": e
         }
+
 
 
 @tool
@@ -283,7 +292,7 @@ tools = [
     # check_if_user_needs_anything_else,  # Check if user needs anything else before ending
     get_sensor_information,  # Get sensors information (temperature, humidity)
     schedule_tool_call,
-    search_tool,
+    # search_tool,
     # get_current_date_time,
 
     control_lights,  # Control lights
