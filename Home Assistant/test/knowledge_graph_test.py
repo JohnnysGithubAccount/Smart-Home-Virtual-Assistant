@@ -1,6 +1,7 @@
 import time
 from typing import List
 from langchain_community.document_loaders import WikipediaLoader
+from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_experimental.graph_transformers import LLMGraphTransformer
 
@@ -16,14 +17,14 @@ def main():
     username = "neo4j"
     password = "password"
 
-    # graph = Neo4jGraph(
-    #     url=url,
-    #     username=username,
-    #     password=password
-    # )
+    graph = Neo4jGraph(
+        url=url,
+        username=username,
+        password=password
+    )
 
     # (Optional) Clear the database if you want fresh start
-    # graph.query("MATCH (n) DETACH DELETE n")
+    graph.query("MATCH (n) DETACH DELETE n")
 
     # === Embedding Model (Ollama) ===
     embeddings = OllamaEmbeddings(model="nomic-embed-text")
@@ -32,17 +33,38 @@ def main():
     # raw_documents = WikipediaLoader(query="Black hole").load()
     # print(f"Loaded {len(raw_documents)} documents.")
     # print(raw_documents)
-    #
-    # # === Split Documents into Chunks ===
-    # text_splitter = TokenTextSplitter(chunk_size=512, chunk_overlap=24)
-    # documents = text_splitter.split_documents(raw_documents[:3])  # take only first 3 for testing
+    raw_documents = [
+        Document(
+            page_content="Johnny is living in a black hole",
+            metadata={"source": "test"}
+        )
+    ]
+
+    # === Split Documents into Chunks ===
+    text_splitter = TokenTextSplitter(chunk_size=512, chunk_overlap=24)
+    documents = text_splitter.split_documents(raw_documents)  # take only first 3 for testing
 
     # === LLM (for graph extraction & queries) ===
-    llm = ChatOllama(model="qwen2.5:0.5b", temperature=0)
+    llm = ChatOllama(model="qwen3:0.6b", temperature=0)
+
+    # def _safe_format_nodes(nodes):
+    #     formatted = []
+    #     for el in nodes:
+    #         props = el.properties if isinstance(el.properties, dict) else {}
+    #         formatted.append(
+    #             llm.Node(
+    #                 id=el.id,
+    #                 type=el.type,
+    #                 properties=props,
+    #             )
+    #         )
+    #     return formatted
+
+    # llm._format_nodes = _safe_format_nodes
 
     # === Convert to Graph Format ===
-    # llm_transformer = LLMGraphTransformer(llm=llm)
-    # graph_documents = llm_transformer.convert_to_graph_documents(documents)
+    llm_transformer = LLMGraphTransformer(llm=llm)
+    graph_documents = llm_transformer.convert_to_graph_documents(documents)
 
     # === Store Graph in Neo4j ===
     # graph.add_graph_documents(
@@ -67,7 +89,7 @@ def main():
     # Retrieval step
     start_time = time.time()
     retrieved_docs = vector_index.similarity_search(
-        "What is the biggest black hole?", k=5)
+        "Where is Johnny living", k=3)
     print(f"Elapse time:{time.time() - start_time}")
 
     # Format docs into context
@@ -82,7 +104,7 @@ def main():
     rag_chain = rag_prompt | llm
     rag_answer = rag_chain.invoke({
         "context": context,
-        "question": "What happens at the event horizon of a black hole?"
+        "question": "Where is Johnny living"
     })
 
     print(rag_answer.content)

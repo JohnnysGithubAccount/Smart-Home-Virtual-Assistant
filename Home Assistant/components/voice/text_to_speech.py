@@ -5,7 +5,7 @@ import torch
 import edge_tts
 from pydub import AudioSegment
 import io
-from utils import clean_text_for_tts, split_into_sentences, playback_worker
+from .utils import clean_text_for_tts, split_into_sentences, playback_worker
 import asyncio, threading, queue
 import time
 
@@ -125,7 +125,7 @@ def speak(text, speech_type: str = "edge-tts"):
     if speech_type == "pyttsx3":
         using_pyttsx3(text)
     else:
-        asyncio.run(using_model(text))
+        # asyncio.run(using_model(text))
         asyncio.run(tts_realtime(text))
 
     print(f"\t\t{'=' * 50}")

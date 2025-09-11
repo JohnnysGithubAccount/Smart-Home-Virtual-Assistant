@@ -75,11 +75,12 @@ class Agent:
     analyzes sensor data, and injects device context if needed.
     """
 
-    def __init__(self, llm, isAutonomous: bool = False, isToolCallingModel: bool = False):
+    def __init__(self, llm, isAutonomous: bool = False, isToolCallingModel: bool = False, vector_index=None):
         self.llm = llm  # LLM with tools already bound
         self.isAutonomous = isAutonomous
         self.isToolCallingModel = isToolCallingModel
         self.handler = MyStreamHandler()
+        self.vector_index = vector_index
 
     def __call__(self, state: State):
         start_time = time.time()
@@ -109,18 +110,24 @@ class Agent:
 
         # === Add all the tool messages ===
         if isinstance(messages[-1], ToolMessage):
-            input_messages = []
+            tool_msgs = []
             for msg in reversed(messages):
                 if isinstance(msg, ToolMessage):
-                    input_messages.append(msg)  # reversed order for now
+                    tool_msgs.append(msg)
                 else:
                     break
-            input_messages = list(reversed(input_messages))  # restore original order
+            tool_msgs = list(reversed(tool_msgs))  # restore original order
+            input_messages = tool_msgs
+
+            # Remove those tool messages from the state
+            state["messages"] = messages[: -len(tool_msgs)]
+            print(f"\t\t[DEBUG] state['message'] cut: ", state["messages"])
         else:
-            input_messages = messages[-1]
+            input_messages = [messages[-1]]  # wrap in list for consistency
 
         # the history is the last 5 messages, if isAutonomous, do not care for history
-        history = messages[-10:]
+        # history = state["messages"][-10:]
+        history = [m for m in state["messages"] if not isinstance(m, ToolMessage)][-10:]
 
         print(f"\t\t{'-' * 50}")
         print(f"\t\t[INFO] History")
@@ -128,9 +135,23 @@ class Agent:
             print(f"\t\t\t[DETAILS] {value}")
         print(f"\t\t{'-' * 50}")
 
+        # === Retrieve Context ===
+        if isinstance(input_messages[-1], ToolMessage):
+            context = []
+        else:
+            retrieved_docs = self.vector_index.similarity_search(input_messages[-1].content, k=3)
+            print(f"\t\t[DEBUG] retrieved_docs: {retrieved_docs}")
+            context_as_list = [doc.page_content for doc in retrieved_docs]
+            context = "\n".join(context_as_list)
+            print(f"\t\t[DEBUG] retrieved_docs before: {context_as_list}")
+            print(f"\t\t[DEBUG] retrieved_docs after: {context}")
+            context = [context]
+
+
         input_dict = {
             "input": input_messages,
-            "history": history
+            "history": history,
+            "context": context
         }
 
         print(f"\t\t[DEBUG] Input dict: {input_dict}")
@@ -157,7 +178,6 @@ class Agent:
         print(f"\t[INFO] Elapse time: {time.time() - start_time}")
         return_dict = {
             "messages": state["messages"] + [llm_response],
-            # "isFeedback": state["isFeedback"]
         }
         if self.isAutonomous:
             return_dict["isFeedback"] = state["isFeedback"]
@@ -417,8 +437,8 @@ class Setup:
 
 # === Long Term Memory ===
 class LongTermMemory:
-    def __init__(self, url, username, password, llm=None):
-        self.memory = MemoryHelper(url, username, password, llm=llm)
+    def __init__(self, url, username, password, llm=None, embeddings=None):
+        self.memory = MemoryHelper(url, username, password, llm=llm, embeddings=embeddings)
 
     def __call__(self, state):
         text = self.memory.summarize_messages(state["messages"])

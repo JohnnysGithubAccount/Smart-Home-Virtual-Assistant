@@ -4,16 +4,37 @@ from langchain_community.document_loaders import WikipediaLoader
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_experimental.graph_transformers import LLMGraphTransformer
+import langchain_experimental.graph_transformers.llm as llm_module
 
 from langchain_neo4j import Neo4jGraph, Neo4jVector
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 from langchain_text_splitters import TokenTextSplitter
-from pydantic import BaseModel, Field
+# from pydantic import BaseModel, Field
 from langchain.schema import Document
+# from langchain_core.documents import Document
+from .utils import extract_thought_and_speech
+
+
+def _safe_format_nodes(nodes):
+    formatted = []
+    for el in nodes:
+        props = el.properties if isinstance(el.properties, dict) else {}
+        # print(f"[DEBUG] node properties:", el.properties, type(el.properties))
+        formatted.append(
+            llm_module.Node(  # ✅ use Node from the module
+                id=el.id,
+                type=el.type,
+                properties=props,
+            )
+        )
+    return formatted
+
+
+llm_module._format_nodes = _safe_format_nodes  # ✅ patch globally
 
 
 class MemoryHelper:
-    def __init__(self, url, username, password, llm=None):
+    def __init__(self, url, username, password, embeddings=None, llm=None):
         # === Neo4j Setup ===
         # url = "neo4j://127.0.0.1:7687"
         # username = "neo4j"
@@ -27,11 +48,14 @@ class MemoryHelper:
         )
 
         # === Embedding Model (Ollama) ===
-        self.embeddings = OllamaEmbeddings(model="nomic-embed-text")
+        if not embeddings:
+            self.embeddings = OllamaEmbeddings(model="nomic-embed-text")
+        else:
+            self.embeddings = embeddings
 
+        # === LLM (for graph extraction & queries) ===
         if not llm:
-            # === LLM (for graph extraction & queries) ===
-            self.llm = ChatOllama(model="qwen2.5:0.5b", temperature=0)
+            self.llm = ChatOllama(model="qwen3:0.6b", temperature=0)
         else:
             self.llm = llm
 
@@ -99,6 +123,10 @@ class MemoryHelper:
         }
 
         response = self.llm_chain.invoke(input_dict)
+        thoughts, response = extract_thought_and_speech(response.content)
+        print(f"Summarizer thoughts: {thoughts}")
+        print(f"Summarizer response: {response}")
+
         return response.content if hasattr(response, "content") else str(response)
 
     def load_wiki_data(self):
@@ -115,7 +143,9 @@ class MemoryHelper:
     def text_to_graph(self, text):
         # === Convert to Graph Format ===
         if isinstance(text, str):
-            text = Document(page_content=text)
+            print(f"[DEBUG] Converting to Document")
+            _, text = extract_thought_and_speech(text)
+            text = Document(page_content=text, metadata={"source": "conversation"})
         graph_documents = self.llm_transformer.convert_to_graph_documents([text])
 
         # === Store Graph in Neo4j ===

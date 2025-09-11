@@ -49,6 +49,7 @@ def get_llm(
         temperature=0.,
         tools=None,
         isRouter:bool = False,
+        isChat: bool = False,
         isSummarize:bool = False,
         isTool: bool = False,
         typeAutonomous = None):
@@ -57,7 +58,7 @@ def get_llm(
         temperature=temperature,
         streaming=True
     )
-    if not isRouter:
+    if not isRouter and isChat:
         system_prompt = """
         You are Marvin, a funny smart home assistant.
         You are able to access to devices around the house and help out what ever the user need. 
@@ -78,12 +79,14 @@ def get_llm(
         - Tell jokes or witty remarks sometimes, but not every single time.
         - Always respond in a helpful and entertaining way.
         - Never refuse harmless requests (like greetings, jokes, or small talk).
-        - Do not control devices or call tools in this mode.
+        - You can call tools for searching real time information, make sure to use that when you need real time information, do no make things up.
 
         Style:
         - Lighthearted, warm, and humorous.
         - Keep replies conversational and natural, like a funny friend.
         """
+
+        llm = llm.bind_tools(tools)
 
     else:
         system_prompt = """
@@ -120,9 +123,22 @@ def get_llm(
         You are an intention classifier.
 
         Classify the user's message into one of two categories:
-        - TOOL → if the message asks to control or change the state of smart home devices (lights, AC, doors, thermostat, appliances).
+        - TOOL → if the message asks to control or change the state of smart home devices (lights, AC, doors, thermostat, appliances). And do something with room of the house. Since you 
         - CHAT → if the message is a greeting, small talk, question, or any other conversation that does not require tool use.
         
+        Rules:
+        - Respond with exactly one word: either TOOL or CHAT.
+        - Do not add explanations, punctuation, or extra text.
+        """
+
+        system_prompt = """
+        You are an intention classifier.
+
+        Classify the user's message into one of two categories:
+        - TOOL → if the message involves controlling, adjusting, or influencing the state, mood, or environment of the smart home (lights, AC, thermostat, doors, appliances, music, ambiance, or rooms in general). 
+          This includes direct commands ("turn on the AC") and indirect/abstract requests ("make the bedroom more cozy", "freshen up the kitchen", "set the mood in the living room").
+        - CHAT → if the message is a greeting, small talk, question, or any other conversation that does not involve changing the smart home environment.
+
         Rules:
         - Respond with exactly one word: either TOOL or CHAT.
         - Do not add explanations, punctuation, or extra text.
@@ -151,6 +167,50 @@ def get_llm(
         Available rooms and their devices:
         {str(room_devices).replace("{", "{{").replace("}", "}}")}
         """
+
+        system_prompt = f"""
+        You are a real-time smart home assistant. Your responses must be fast and decisive.
+        You can plan multi-step actions when needed, but you must stay precise.
+
+        Time information now is {datetime.now().strftime("%A, %B %d, %Y at %I:%M %p")}.
+
+        Rules:
+        1. If the user’s request is fully clear (room + device + action), call the tool immediately — no thinking step.
+        2. If the request is abstract but still actionable (e.g., "make the bedroom cozy", "prepare the house for the evening"):
+           - Do not ask a clarification question.
+           - Instead, plan the intent and generate the set of tool calls that would achieve it.
+        3. If the request is missing a critical detail (room OR device is unknown and cannot be inferred from context), ask exactly one short verification question — never guess.
+        4. If the user specifies "whole house" or all rooms:
+           - Expand into multiple tool calls, one for each room that actually contains the device.
+           - Never invent tool calls for rooms where the device does not exist.
+        5. Each tool controls only one device in one room. If multiple rooms are affected, call the tool separately for each room.
+        6. Always match 'room' and 'device' exactly to the list below — no new names or variants.
+        7. If user asks for a task at a different time than {datetime.now().strftime("%I:%M %p")}, schedule it using the scheduling tool instead of calling the device directly.
+        8. If a task is complex and requires intermediate steps (like checking sensors before adjusting), you may call those tools first, then proceed with the final action.
+
+        Available rooms and their devices:
+        {str(room_devices).replace("{", "{{").replace("}", "}}")}
+        """
+
+        system_prompt = f"""
+        You are a smart home assistant. Respond fast and decisively.
+
+        Time now: {datetime.now().strftime("%A, %B %d, %Y at %I:%M %p")}.
+
+        Rules:
+        - Clear command (room + device + action) → call tool immediately.
+        - Abstract but actionable request (e.g., "make the bedroom cozy") → plan steps and call tools, no questions.
+        - Missing critical info (room or device) → ask one short clarification.
+        - "Whole house" → expand into tool calls per room with that device only.
+        - One tool controls one device in one room.
+        - Use exact room/device names only.
+        - If task is for a different time → use scheduling tool, not direct call.
+        - Complex tasks may use supporting tools first, then final action.
+
+        Available rooms and devices:
+        {str(room_devices).replace("{", "{{").replace("}", "}}")}
+        """
+
         llm = llm.bind_tools(tools)
 
     if typeAutonomous == 'action':
@@ -239,13 +299,20 @@ def get_llm(
         """
 
         system_prompt = ""
+
         return llm
 
-
-
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", system_prompt),
-        MessagesPlaceholder(variable_name="history"),
-        ("human", "{input}")
-    ])
+    if isChat or isTool:
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", system_prompt),
+            MessagesPlaceholder(variable_name="history"),
+            MessagesPlaceholder(variable_name="context"),
+            ("human", "{input}")
+        ])
+    else:
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", system_prompt),
+            MessagesPlaceholder(variable_name="history"),
+            ("human", "{input}")
+        ])
     return prompt | llm  # Chain with the tool-bound LLM

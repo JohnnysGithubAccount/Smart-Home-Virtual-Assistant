@@ -196,7 +196,7 @@ def control_heater(target_temp: int, room: str):
     """Control heater in a specific room
 
     Args:
-         target_temp (int): temperature which user expect to archive from the heater.
+         target_temp (int): temperature which user expect to archive from the heater. Or 0 if you want it to be turned off
          room (str): the room you want to control the heater
     """
     room = room.strip().replace(' ', "_")
@@ -313,4 +313,4 @@ chat_tools = [
     # web_search
 ]
 
-chat_tool_names = [func.name for func in tools]
+chat_tool_names = [func.name for func in chat_tools]

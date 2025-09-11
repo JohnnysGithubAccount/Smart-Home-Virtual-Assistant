@@ -17,11 +17,11 @@
         "temperature": 0
       },
       "chat_llm": {
-        "model": "qwen2.5:1.5b",
+        "model": "qwen3:1.7b",
         "temperature": 0.5
       },
       "summarize_llm": {
-        "model": "qwen3:4b",
+        "model": "qwen3:1.7b",
         "temperature": 0
       },
       "checking_llm": {

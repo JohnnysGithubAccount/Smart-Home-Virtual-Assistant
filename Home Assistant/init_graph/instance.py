@@ -1,3 +1,4 @@
+from langchain_neo4j import Neo4jVector
 from langgraph.constants import END
 from langgraph.graph import StateGraph, START
 from langgraph.checkpoint.memory import InMemorySaver
@@ -8,6 +9,7 @@ from components.llm import get_llm
 from components.nodes import Tools, Sensors, ToolRouter, Agent, ChatRouter, ChatClassifier
 from components.nodes import LongTermMemory, UserChecking, IsContinueRouter
 from components.utils import State, plot_graph, load_configs
+from langchain_ollama import ChatOllama, OllamaEmbeddings
 
 
 # === Get configs ===
@@ -29,7 +31,8 @@ router_llm = get_llm(
 chat_llm = get_llm(
     name=configs["instance"]["models"]["chat_llm"]["model"],
     temperature=configs["instance"]["models"]["chat_llm"]["temperature"],
-    tools=chat_tools
+    tools=chat_tools,
+    isChat=True
 )
 summarize_llm = get_llm(
     name=configs["instance"]["models"]["summarize_llm"]["model"],
@@ -43,22 +46,33 @@ checking_llm = get_llm(
     tools=None,
     isSummarize=True
 )
-
+embeddings = OllamaEmbeddings(model="nomic-embed-text")
 
 # === Long-term memory ===
 memory = InMemorySaver()
+vector_index = Neo4jVector.from_existing_graph(
+    embeddings,
+    url=configs["graph database"]["url"],
+    username=configs["graph database"]["username"],
+    password=configs["graph database"]["password"],
+    search_type="hybrid",
+    node_label="Chunk",  # chunks hold text
+    text_node_properties=["text"],  # property containing the text
+    embedding_node_property="embedding"
+)
 
 # === Defines nodes ===
 chat_classifier = ChatClassifier(llm=router_llm)
-chat_agent = Agent(chat_llm)
-tool_agent = Agent(tool_llm, isToolCallingModel=True)
+chat_agent = Agent(chat_llm, vector_index=vector_index)
+tool_agent = Agent(tool_llm, isToolCallingModel=True, vector_index=vector_index)
 tool_node = Tools(tools=tools)
 chat_tool_node = Tools(tools=chat_tools)
 long_term_memory_node = LongTermMemory(
     url=configs["graph database"]["url"],
     username=configs["graph database"]["username"],
     password=configs["graph database"]["password"],
-    llm=summarize_llm
+    llm=summarize_llm,
+    embeddings=embeddings
 )
 checking_user = UserChecking(llm=checking_llm)
 
