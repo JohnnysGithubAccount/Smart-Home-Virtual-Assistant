@@ -21,7 +21,7 @@
         "temperature": 0.5
       },
       "summarize_llm": {
-        "model": "qwen3:1.7b",
+        "model": "qwen3:4b",
         "temperature": 0
       },
       "checking_llm": {

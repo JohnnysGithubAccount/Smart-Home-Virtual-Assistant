@@ -47,73 +47,75 @@ def init():
 
 
 def run():
-    # === Init objects ===
-    print(f"[INFO] Initializing objects")
-    object_dict = init()
-    config = object_dict['langgraph_config']
-    classifier = object_dict['wake_word_classifier']
-    count_time = 0
-
-    # === Wake word detection ===
-    wake_word_detector(
-        classifier,
-        debug=True
-    )
-    speak('Hi, how can i help you?')
-
-    # === Agent thing ===
     while True:
-        start_time = time.time()
+        # === Init objects ===
+        print(f"[INFO] Initializing objects")
+        object_dict = init()
+        config = object_dict['langgraph_config']
+        classifier = object_dict['wake_word_classifier']
+        count_time = 0
 
-        # === Input ===
-        # user_input_text = input("User: ")
-        user_input_text = listen()
+        # === Wake word detection ===
+        wake_word_detector(
+            classifier,
+            debug=True
+        )
+        speak('Hi, how can i help you?')
 
-        if not user_input_text:
-            count_time += 1
-            speak("I'm so sorry but the sound wasn't clear. Repeat please!")
+        # === Agent thing ===
+        while True:
+            start_time = time.time()
 
-            if count_time == 3:
-                speak("Seems like that was just a mix signal. Shutting down")
+            # === Input ===
+            # user_input_text = input("User: ")
+            user_input_text = listen()
+
+            if not user_input_text:
+                count_time += 1
+                speak("I'm so sorry but the sound wasn't clear. Repeat please!")
+
+                if count_time == 3:
+                    speak("Seems like that was just a mix signal. Shutting down")
+                    break
+                continue
+
+            print(f"[INFO] Running condition: {user_input_text.lower().strip() not in ['q', 'quit', 'exit', None]}")
+            if user_input_text.lower().strip() in ['q', 'quit', 'exit', None]:
                 break
-            continue
 
-        print(f"[INFO] Running condition: {user_input_text.lower().strip() not in ['q', 'quit', 'exit', None]}")
-        if user_input_text.lower().strip() in ['q', 'quit', 'exit', None]:
-            break
+            user_input = HumanMessage(content=f"{user_input_text}")
 
-        user_input = HumanMessage(content=f"{user_input_text}")
+            print("=== Running Graph ===")
+            for step in instance_graph.stream({"messages": [user_input]}, config):
+                # step is a dict mapping node_name -> output
+                for node_name, output in step.items():
+                    try:
+                        if isinstance(output["messages"][-1], AIMessage) and output["messages"][-1].content not in ["", " ", None]:
+                            print(f"[DEBUG] Check is AIMessage: {isinstance(output['messages'][-1], AIMessage)}")
+                            print("=" * 50)
 
-        print("=== Running Graph ===")
-        for step in instance_graph.stream({"messages": [user_input]}, config):
-            # step is a dict mapping node_name -> output
-            for node_name, output in step.items():
-                try:
-                    if isinstance(output["messages"][-1], AIMessage) and output["messages"][-1].content not in ["", " ", None]:
-                        print(f"[DEBUG] Check is AIMessage: {isinstance(output['messages'][-1], AIMessage)}")
-                        print("=" * 50)
+                            ai_thought, ai_response = extract_thought_and_speech(output["messages"][-1].content)
+                            print("Home assistant thinking process:", ai_thought)
+                            print("Home assistant:", ai_response)
 
-                        ai_thought, ai_response = extract_thought_and_speech(output["messages"][-1].content)
-                        print("Home assistant thinking process:", ai_thought)
-                        print("Home assistant:", ai_response)
+                            if ai_response is None or ai_response.strip() in ["", " "]:
+                                continue
+                            speak(ai_response)
 
-                        if ai_response is None or ai_response.strip() in ["", " "]:
-                            continue
-                        speak(ai_response)
+                            print("=" * 50)
+                            print(f"[INFO] Whole process elapse time: {time.time() - start_time}")
+                            print("=" * 50)
+                            print()
+                    except KeyError as e:
+                        print(f"[ERROR] {e}")
+                    except TypeError as e:
+                        print(f"[ERROR] {e}")
 
-                        print("=" * 50)
-                        print(f"[INFO] Whole process elapse time: {time.time() - start_time}")
-                        print("=" * 50)
-                        print()
-                except KeyError as e:
-                    print(f"[ERROR] {e}")
-                except TypeError as e:
-                    print(f"[ERROR] {e}")
+            for _ in tqdm(range(2), desc="Small break"):
+                time.sleep(1)
 
-        for _ in tqdm(range(2), desc="Small break"):
-            time.sleep(1)
-
-    print("=== Done ===")
+        print("=== Done ===")
+        break
 
 
 def main():
