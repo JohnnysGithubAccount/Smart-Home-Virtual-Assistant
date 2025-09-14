@@ -309,7 +309,8 @@ tool_names = [func.name for func in tools]
 chat_tools = [
     human_assistance,
     get_current_date_time,
-    search_tool
+    search_tool,
+    get_sensor_information
     # web_search
 ]
 

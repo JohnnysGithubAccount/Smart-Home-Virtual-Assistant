@@ -116,8 +116,8 @@ def listen(using_gg: bool = False):
     if using_gg:
         text = speech_to_text_google()
     else:
-        text = input("User: ")
-        # text = transcribe_with_vad()
+        # text = input("User: ")
+        text = transcribe_with_vad()
 
     return text
 
