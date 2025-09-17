@@ -63,63 +63,64 @@ def run():
         speak('Hi, how can i help you?')
 
         # === Agent thing ===
-        while True:
-            start_time = time.time()
+        start_time = time.time()
 
-            # === Input ===
-            # user_input_text = input("User: ")
-            user_input_text = listen()
+        # === Input ===
+        # user_input_text = input("User: ")
+        user_input_text = listen()
 
-            if not user_input_text:
-                count_time += 1
-                speak("I'm so sorry but the sound wasn't clear. Repeat please!")
+        if not user_input_text:
+            count_time += 1
+            speak("I'm so sorry but the sound wasn't clear. Repeat please!")
 
-                if count_time == 3:
-                    speak("Seems like that was just a mix signal. Shutting down")
-                    break
-                continue
-
-            print(f"[INFO] Running condition: {user_input_text.lower().strip() not in ['q', 'quit', 'exit', None]}")
-            if user_input_text.lower().strip() in ['q', 'quit', 'exit', None]:
+            if count_time == 3:
+                speak("Seems like that was just a mix signal. Shutting down")
                 break
+            continue
 
-            user_input = HumanMessage(content=f"{user_input_text}")
+        print(f"[INFO] Running condition: {user_input_text.lower().strip() not in ['q', 'quit', 'exit', None]}")
+        if user_input_text.lower().strip() in ['q', 'quit', 'exit', None]:
+            break
 
-            print("=== Running Graph ===")
-            for step in instance_graph.stream({"messages": [user_input]}, config):
-                # step is a dict mapping node_name -> output
-                for node_name, output in step.items():
-                    try:
-                        if isinstance(output["messages"][-1], AIMessage) and output["messages"][-1].content not in ["", " ", None]:
-                            print(f"[DEBUG] Check is AIMessage: {isinstance(output['messages'][-1], AIMessage)}")
-                            print("=" * 50)
+        user_input = HumanMessage(content=f"{user_input_text}")
 
-                            ai_thought, ai_response = extract_thought_and_speech(output["messages"][-1].content)
-                            print("Home assistant thinking process:", ai_thought)
-                            print("Home assistant:", ai_response)
+        print("=== Running Graph ===")
+        for step in instance_graph.stream({"messages": [user_input]}, config):
+            # step is a dict mapping node_name -> output
+            for node_name, output in step.items():
+                try:
+                    if isinstance(output["messages"][-1], AIMessage) and output["messages"][-1].content not in ["", " ", None]:
+                        print(f"[DEBUG] Check is AIMessage: {isinstance(output['messages'][-1], AIMessage)}")
+                        print("=" * 50)
 
-                            if ai_response is None or ai_response.strip() in ["", " "]:
-                                continue
-                            speak(ai_response)
+                        ai_thought, ai_response = extract_thought_and_speech(output["messages"][-1].content)
+                        print("Home assistant thinking process:", ai_thought)
+                        print("Home assistant:", ai_response)
 
-                            print("=" * 50)
-                            print(f"[INFO] Whole process elapse time: {time.time() - start_time}")
-                            print("=" * 50)
-                            print()
-                    except KeyError as e:
-                        print(f"[ERROR] {e}")
-                    except TypeError as e:
-                        print(f"[ERROR] {e}")
+                        if ai_response is None or ai_response.strip() in ["", " "]:
+                            continue
+                        speak(ai_response)
 
-            for _ in tqdm(range(2), desc="Small break"):
-                time.sleep(1)
+                        print("=" * 50)
+                        print(f"[INFO] Whole process elapse time: {time.time() - start_time}")
+                        print("=" * 50)
+                        print()
+                except KeyError as e:
+                    print(f"[ERROR] {e}")
+                except TypeError as e:
+                    print(f"[ERROR] {e}")
+
+        for _ in tqdm(range(2), desc="Small break"):
+            time.sleep(1)
 
         print("=== Done ===")
-        break
 
 
+# === Main program ===
 def main():
+    # === Plot the agent graph ===
     plot_graph(instance_graph, "graphs/instance.png")
+    # === Run the main program ===
     run()
 
 

@@ -134,6 +134,10 @@ def transcribe_with_vad(sampling_rate=16_000, chunk_length_s=1.0, stream_chunk_s
     buffered_audio = []
     last_speech_end = None
 
+    speech_detected = False
+    silent_chunk_counter = 0
+    max_silent_chunks = 10  # You can adjust this threshold
+
     print("Start speaking...")
 
     for chunk in mic:
@@ -146,9 +150,13 @@ def transcribe_with_vad(sampling_rate=16_000, chunk_length_s=1.0, stream_chunk_s
 
         if segments:
             last_speech_end = time.time()
+            speech_detected = True
+            silent_chunk_counter = 0
             print(f"[INFO]🗣️ Speech detected")
         else:
-            if last_speech_end and (time.time() - last_speech_end > speech_timeout):
+            silent_chunk_counter += 1
+
+            if speech_detected and (time.time() - last_speech_end > speech_timeout):
                 print(f"[INFO]🔇 Speech ended — transcribing...")
                 buffered_np = np.concatenate(buffered_audio).astype(np.float32)
                 full_waveform = torch.tensor(buffered_np, dtype=torch.float32).unsqueeze(0)
@@ -161,6 +169,12 @@ def transcribe_with_vad(sampling_rate=16_000, chunk_length_s=1.0, stream_chunk_s
                 print(f"🗣 User: {text}")
 
                 return text
+
+            elif not speech_detected and silent_chunk_counter >= max_silent_chunks:
+                print("⚠️ No speech detected — ending session.")
+
+                return "User doesn't say anything, ending conversation"
+
 
 
 # === Main ===
