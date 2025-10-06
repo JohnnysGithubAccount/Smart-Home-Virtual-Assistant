@@ -7,10 +7,15 @@
 #define dhtpin 4
 #define dhttype DHT22
 
-// --- Đèn LED ---
-#define led 2 // LED On/Off
-#define PWM_LED_PIN 25 //LED PWM
-#define PWM_CHANNEL 0
+// --- Đèn LED ON/OFF---
+#define led1 33 
+#define led2 36 
+
+// --- Cấu hình cho LED PWM ---
+#define PWM_LED_PIN1 25 
+#define PWM_CHANNEL1 0
+#define PWM_LED_PIN2 32 
+#define PWM_CHANNEL2 1
 #define PWM_FREQ 5000
 #define PWM_RESOLUTION 8
 
@@ -60,9 +65,21 @@ void taskReceiveData(void *parameter) {
     if(Firebase.getString(fbDataReceive, "/bedroom/device/lights")) {
       String ledCommand = fbDataReceive.stringData();
       if (ledCommand == "on") {
-        digitalWrite(led, HIGH);
+        digitalWrite(led1, HIGH);
       } else if (ledCommand == "off") {
-        digitalWrite(led, LOW);
+        digitalWrite(led1, LOW);
+      }
+      Serial.printf("[Task Receive] Led command: %s -> Led is %s\n", ledCommand.c_str(), (ledCommand == "on" ? "ON" : "OFF"));
+    } else {
+      Serial.printf("[Task Receive] Failed to get Led command: %s\n", fbDataReceive.errorReason().c_str());
+    }
+
+    if(Firebase.getString(fbDataReceive, "/kitchen/device/lights")) {
+      String ledCommand = fbDataReceive.stringData();
+      if (ledCommand == "on") {
+        digitalWrite(led2, HIGH);
+      } else if (ledCommand == "off") {
+        digitalWrite(led2, LOW);
       }
       Serial.printf("[Task Receive] Led command: %s -> Led is %s\n", ledCommand.c_str(), (ledCommand == "on" ? "ON" : "OFF"));
     } else {
@@ -74,12 +91,22 @@ void taskReceiveData(void *parameter) {
       int pwmValue = fbDataReceive.intData();
       pwmValue = constrain(pwmValue, 0, 100);
       int dutyCycle = map(pwmValue, 0, 100, 0, 255);
-      ledcWrite(PWM_CHANNEL, dutyCycle);
+      ledcWrite(PWM_CHANNEL1, dutyCycle);
       Serial.printf("[Task Receive] PWM Value: %d -> Duty Cycle: %d\n", pwmValue, dutyCycle);
     } else {
       Serial.printf("[Task Receive] Failed to get PWM Value: %s\n", fbDataReceive.errorReason().c_str());
     }
     
+    if(Firebase.getInt(fbDataReceive, "/kitchen/device/lamp")) {
+      int pwmValue = fbDataReceive.intData();
+      pwmValue = constrain(pwmValue, 0, 100);
+      int dutyCycle = map(pwmValue, 0, 100, 0, 255);
+      ledcWrite(PWM_CHANNEL2, dutyCycle);
+      Serial.printf("[Task Receive] PWM Value: %d -> Duty Cycle: %d\n", pwmValue, dutyCycle);
+    } else {
+      Serial.printf("[Task Receive] Failed to get PWM Value: %s\n", fbDataReceive.errorReason().c_str());
+    }
+
     // Tạm dừng tác vụ này trong 500 mili-giây
     vTaskDelay(500 / portTICK_PERIOD_MS);
   }
@@ -90,8 +117,11 @@ void setup() {
   dht.begin();
   pinMode(led, OUTPUT);
 
-  ledcSetup(PWM_CHANNEL, PWM_FREQ, PWM_RESOLUTION);
-  ledcAttachPin(PWM_LED_PIN, PWM_CHANNEL);
+  ledcSetup(PWM_CHANNEL1, PWM_FREQ, PWM_RESOLUTION);
+  ledcAttachPin(PWM_LED_PIN1, PWM_CHANNEL1);
+
+  ledcSetup(PWM_CHANNEL2, PWM_FREQ, PWM_RESOLUTION);
+  ledcAttachPin(PWM_LED_PIN2, PWM_CHANNEL2);
 
   WiFi.begin(WF_SSID, WF_PASS);
   Serial.print("Connecting Wifi");
